@@ -167,15 +167,15 @@ This is added as a hook to `org-capture-after-finalize-hook'."
     (let* ((nodes (org-roam-db-query node-query))
            (edges-query
             `[:with selected :as [:select [file] :from ,node-query]
-                    :select :distinct [to from] :from links
-                    :where (and (in to selected) (in from selected))])
+              :select :distinct [to from] :from links
+              :where (and (in to selected) (in from selected))])
            (edges-cites-query
             `[:with selected :as [:select [file] :from ,node-query]
-                    :select :distinct [file from] :from links
-                    :inner :join refs :on (and (= links:to refs:ref)
-                                               (= links:type "cite")
-                                               (= refs:type "cite"))
-                    :where (and (in file selected) (in from selected))])
+              :select :distinct [file from] :from links
+              :inner :join refs :on (and (= links:to refs:ref)
+                                         (= links:type "cite")
+                                         (= refs:type "cite"))
+              :where (and (in file selected) (in from selected))])
            (edges       (org-roam-db-query edges-query))
            (edges-cites (org-roam-db-query edges-cites-query))
            (graph (list (cons 'nodes (list))
@@ -188,22 +188,18 @@ This is added as a hook to `org-capture-after-finalize-hook'."
           (push (list (cons 'id (org-roam--path-to-slug file))
                       (cons 'title title)
                       (cons 'tags tags)
-                      (cons 'label (s-word-wrap
-                                    org-roam-server-label-wrap-length
-                                    (if org-roam-server-label-truncate
-                                        (s-truncate
-                                         org-roam-server-label-truncate-length title)
-                                      title)))
+                      (cons 'label (xml-escape-string title))
                       (cons 'url (concat "org-protocol://roam-file?file="
                                          (url-hexify-string file)))
-                      (cons 'path file))
+                      (cons 'path file)
+                      ;; patch happens here
+                      (cons 'group (roam-tag-colorizer tags)))
                 (cdr (elt graph 0)))))
       (dolist (edge edges)
         (let* ((title-source (org-roam--path-to-slug (elt edge 0)))
                (title-target (org-roam--path-to-slug (elt edge 1))))
           (push (list (cons 'from title-source)
                       (cons 'to title-target)
-                      ;(cons 'arrows "to")
                       )
                 (cdr (elt graph 1)))))
       (dolist (edge edges-cites)
@@ -211,7 +207,6 @@ This is added as a hook to `org-capture-after-finalize-hook'."
                (title-target (org-roam--path-to-slug (elt edge 1))))
           (push (list (cons 'from title-source)
                       (cons 'to title-target)
-                      ;(cons 'arrows "to")
                       )
                 (cdr (elt graph 1)))))
       (json-encode graph))))
